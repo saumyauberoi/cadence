@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate a Playlist</title>
+    <link rel="stylesheet" href="./css/gen2.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Calistoga&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="leftAlign">
+        <img src="https://raw.githubusercontent.com/aditikar27/Cadence/refs/heads/main/images/textnew2.png" width="640px" alt="Scalable Text Image">
+        <div class="vibe">
+            <input type="text" id="vibeInput" placeholder="Enter a vibe">
+        </div>
+        <div class="generateButton">
+            <button id="generateButton">Generate</button>
+        </div>
+        <div id="rightAlign">
+            <div id="playlistContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+
+        if (accessToken) {
+            localStorage.setItem("spotify_token", accessToken);
+            localStorage.setItem("spotify_refresh_token", refreshToken);
+        }
+
+        async function generatePlaylist() {
+            const token = localStorage.getItem("spotify_token");
+            if (!token) {
+                alert("No valid token. Please log in.");
+                window.location.href = "http://localhost:3002/";
+                return;
+            }
+
+            const vibe = document.getElementById("vibeInput").value.trim();
+            if (!vibe) {
+                alert("Please enter a vibe.");
+                return;
+            }
+
+            try {
+                const response = await fetch("http://localhost:3002/generate-playlist", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ vibe, token }),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    const playlistUrl = data.playlistUrl;
+                    const playlistId = playlistUrl.split("/playlist/")[1];
+
+                    document.getElementById("playlistContainer").innerHTML = `
+                        <button id="previewButton">Show Preview</button>
+                        <iframe id="playlistEmbed" style="border-radius:12px; width:150%; height:352px; display:none;" 
+                            src="https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator" 
+                            frameBorder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy">
+                        </iframe>
+                    `;
+
+                    document.getElementById("previewButton").addEventListener("click", () => {
+                        document.getElementById("playlistEmbed").style.display = "block";
+                    });
+
+                    // Open playlist in new tab after generation
+                    window.open(playlistUrl, "_blank");
+
+                } else {
+                    alert("Failed to generate playlist: " + data.error);
+                }
+            } catch (error) {
+                alert("Error generating playlist. Please try again.");
+            }
+        }
+
+        document.getElementById("generateButton").addEventListener("click", generatePlaylist);
+    </script>
+</body>
+</html>
